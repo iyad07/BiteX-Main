@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "439695908738",
+    "project_id": "bitex-7b207",
+    "storage_bucket": "bitex-7b207.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:439695908738:android:9b33ea02fc25c25435799b",
+        "android_client_info": {
+          "package_name": "com.example.bikex"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCuWFV4SEpQp6QjASKVz0fCRmZUFXLpxro"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
