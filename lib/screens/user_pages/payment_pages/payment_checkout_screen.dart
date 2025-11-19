@@ -115,45 +115,11 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
           // Show mobile money prompt dialog
           _showMobileMoneyPromptDialog(transaction.gatewayTransactionId!);
           
-          // Wait for a few seconds to simulate user responding to prompt
-          await Future.delayed(const Duration(seconds: 5));
-          
-          // Check the status
-          final status = await _mobileMoneyService.checkMobileMoneyStatus(
-            transaction.gatewayTransactionId!,
-          );
-          
-          if (status == TransactionStatus.completed) {
-            transaction = TransactionModel(
-              id: transaction.id,
-              userId: transaction.userId,
-              orderId: transaction.orderId,
-              paymentMethodId: transaction.paymentMethodId,
-              type: transaction.type,
-              status: TransactionStatus.completed,
-              amount: transaction.amount,
-              currency: transaction.currency,
-              gatewayTransactionId: transaction.gatewayTransactionId,
-              gatewayResponse: transaction.gatewayResponse,
-              createdAt: transaction.createdAt,
-              completedAt: DateTime.now(),
-            );
-          } else {
-            transaction = TransactionModel(
-              id: transaction.id,
-              userId: transaction.userId,
-              orderId: transaction.orderId,
-              paymentMethodId: transaction.paymentMethodId,
-              type: transaction.type,
-              status: TransactionStatus.failed,
-              amount: transaction.amount,
-              currency: transaction.currency,
-              gatewayTransactionId: transaction.gatewayTransactionId,
-              gatewayResponse: transaction.gatewayResponse,
-              createdAt: transaction.createdAt,
-              errorMessage: 'Payment was not confirmed',
-            );
-          }
+          // Don't automatically process - let user control the flow
+          setState(() {
+            _isProcessing = false;
+          });
+          return; // Exit here and let the dialog handle the rest
         }
       } else {
         // Process as regular card payment
@@ -197,52 +163,127 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
   
   // Show mobile money prompt dialog to simulate the mobile money payment flow
   void _showMobileMoneyPromptDialog(String transactionId) {
+    bool isWaitingForPayment = true;
+    
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: Text('${_getMobileMoneyProviderName()} Payment'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: _getMobileMoneyColor(),
-                shape: BoxShape.circle,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('${_getMobileMoneyProviderName()} Payment'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: _getMobileMoneyColor(),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.phone_android,
+                  color: Colors.white,
+                  size: 30,
+                ),
               ),
-              child: Icon(
-                Icons.phone_android,
-                color: Colors.white,
-                size: 30,
+              const SizedBox(height: 16),
+              Text(
+                'A payment request has been sent to your phone number.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontWeight: FontWeight.w500),
               ),
+              const SizedBox(height: 8),
+              Text(
+                'Please check your phone and enter your PIN to approve the payment of GHS ${(widget.amount + _tipAmount).toStringAsFixed(2)}',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              if (isWaitingForPayment) ...[
+                const CircularProgressIndicator(),
+                const SizedBox(height: 8),
+                Text(
+                  'Waiting for confirmation...',
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+              ],
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      'Transaction ID',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                    Text(
+                      transactionId.substring(0, 12),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Having trouble? Make sure your phone has network coverage and sufficient balance.',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                setState(() {
+                  _isProcessing = false;
+                  _errorMessage = 'Payment cancelled by user';
+                });
+                if (widget.onPaymentFailure != null) {
+                  widget.onPaymentFailure!();
+                }
+              },
+              child: const Text('CANCEL'),
             ),
-            const SizedBox(height: 16),
-            Text('A payment request has been sent to your phone number.'),
-            const SizedBox(height: 8),
-            Text(
-              'Please check your phone and enter your PIN to approve the payment of GHS ${(widget.amount + _tipAmount).toStringAsFixed(2)}',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            const CircularProgressIndicator(),
-            const SizedBox(height: 16),
-            Text(
-              'Transaction ID: ${transactionId.substring(0, 8)}...',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ElevatedButton(
+              onPressed: () async {
+                setDialogState(() {
+                  isWaitingForPayment = true;
+                });
+                
+                // Check payment status
+                final status = await _mobileMoneyService.checkMobileMoneyStatus(transactionId);
+                
+                if (status == TransactionStatus.completed) {
+                  Navigator.of(context).pop();
+                  _showSuccessDialog();
+                  if (widget.onPaymentSuccess != null) {
+                    widget.onPaymentSuccess!();
+                  }
+                } else {
+                  setDialogState(() {
+                    isWaitingForPayment = false;
+                  });
+                  
+                  // Show error and allow retry
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Payment not confirmed. Please try again.'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              child: const Text('CHECK STATUS'),
             ),
           ],
         ),
       ),
     );
-    
-    // Automatically close dialog after a few seconds
-    Future.delayed(const Duration(seconds: 4), () {
-      if (mounted && Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-      }
-    });
   }
   
   String _getMobileMoneyProviderName() {

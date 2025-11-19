@@ -18,6 +18,9 @@ import 'package:bikex/screens/user_pages/profile%20pages/add_edit_address_screen
 import 'package:bikex/screens/user_pages/payment_pages/payment_methods_screen.dart';
 import 'package:bikex/screens/user_pages/payment_pages/transaction_history_screen.dart';
 import 'package:bikex/screens/user_pages/restaurant%20_page/restaurant_page.dart';
+import 'package:bikex/screens/user_pages/restaurant_map_screen.dart';
+import 'package:bikex/screens/user_pages/order_tracking_screen.dart';
+import 'package:bikex/screens/debug/mobile_money_test_screen.dart';
 import 'package:bikex/screens/user_pages/tracking_pages/track_order_page.dart';
 import 'package:bikex/screens/user_pages/tracking_pages/tracking_demo_page.dart';
 import 'package:bikex/screens/user_pages/user_credential_pages/forgot_password.dart';
@@ -30,6 +33,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 
@@ -96,8 +100,19 @@ class MyApp extends StatelessWidget {
             FoodPages(food: ModalRoute.of(context)?.settings.arguments as Food?),
         '/restaurant': (context) => RestaurantPage(
             restaurant: ModalRoute.of(context)?.settings.arguments as Restaurant?),
+        '/restaurant_map': (context) => const RestaurantMapScreen(),
+        '/order_tracking': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          return OrderTrackingScreen(
+            restaurant: args?['restaurant'] as Restaurant,
+            orderItems: args?['orderItems'] as List<Food>,
+            orderNumber: args?['orderNumber'] as String,
+            customerLocation: args?['customerLocation'] as LatLng?,
+          );
+        },
         '/search': (context) => SearchPage(),
         '/dashboard': (context) => const RestaurantDashboard(),
+        '/mobile_money_test': (context) => const MobileMoneyTestScreen(),
         '/onboarding1': (context) => OnboardingScreen(),
         '/login': (context) => const LoginPage(),
         '/signup': (context) => const SignUpPage(),

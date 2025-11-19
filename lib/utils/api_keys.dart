@@ -1,4 +1,4 @@
 class ApiKeys {
-  // TODO: Replace with your actual Google Maps API key
-  static const String googleMapsApiKey = 'YOUR_GOOGLE_MAPS_API_KEY';
+  // Google Maps API key
+  static const String googleMapsApiKey = 'AIzaSyCRuu_uPzyUzN9NzGj5yS0MyFOW0OisTUo';
 }

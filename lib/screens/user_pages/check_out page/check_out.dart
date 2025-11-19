@@ -235,22 +235,117 @@ class _CheckOutPageState extends State<CheckOutPage> {
   }
 
   void _showMobileMoneyPromptDialog(String transactionId) {
+    bool isWaitingForPayment = true;
+    
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Mobile Money Payment'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 16),
-              Text('Transaction ID: $transactionId'),
-              const SizedBox(height: 8),
-              const Text(
-                'Please check your phone for a mobile money prompt and enter your PIN to complete the payment.',
-                textAlign: TextAlign.center,
+        return StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: const Text('Mobile Money Payment'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.orange[700],
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.phone_android,
+                    color: Colors.white,
+                    size: 30,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'A payment request has been sent to your phone number.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Please check your phone and enter your PIN to complete the payment of \$${((widget.amount ?? _getCurrentOrderAmount()) + _tipAmount).toStringAsFixed(2)}',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                if (isWaitingForPayment) ...[
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Waiting for confirmation...',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Transaction ID',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                      Text(
+                        transactionId.substring(0, 12),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Having trouble? Make sure your phone has network coverage and sufficient balance.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  setState(() {
+                    _isProcessing = false;
+                    _errorMessage = 'Payment cancelled by user';
+                  });
+                },
+                child: const Text('CANCEL'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  setDialogState(() {
+                    isWaitingForPayment = true;
+                  });
+                  
+                  // Check payment status
+                  final status = await _mobileMoneyService.checkMobileMoneyStatus(transactionId);
+                  
+                  if (status == TransactionStatus.completed) {
+                    Navigator.of(context).pop();
+                    _showSuccessDialog();
+                  } else {
+                    setDialogState(() {
+                      isWaitingForPayment = false;
+                    });
+                    
+                    // Show error and allow retry
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Payment not confirmed. Please try again.'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                },
+                child: const Text('CHECK STATUS'),
               ),
             ],
           ),

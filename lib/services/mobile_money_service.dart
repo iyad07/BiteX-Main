@@ -159,12 +159,20 @@ class MobileMoneyService {
     required String provider,
     required String orderId,
   }) async {
+    print('Processing mobile money payment:');
+    print('Phone: $phoneNumber');
+    print('Amount: $amount');
+    print('Provider: $provider');
+    print('Order ID: $orderId');
+    
     // In a real application, this would be an API call to a payment gateway
     // For this demo, we'll simulate the process
     await Future.delayed(const Duration(seconds: 2)); // Simulate API processing time
     
     // Simulate a transaction ID from the payment gateway
     final transactionId = 'mm_${DateTime.now().millisecondsSinceEpoch}';
+    
+    print('Generated transaction ID: $transactionId');
     
     // Simulated response from payment gateway
     return {
@@ -220,12 +228,16 @@ class MobileMoneyService {
   // Check payment status
   Future<TransactionStatus> checkMobileMoneyStatus(String transactionId) async {
     try {
+      print('Checking mobile money status for transaction: $transactionId');
+      
       // In a real app, you would call the payment gateway API to check the status
       // For this demo, we'll simulate a successful response after some time
       await Future.delayed(const Duration(seconds: 2));
       
-      // Random success/failure for demonstration (in a real app, this would come from the API)
-      final randomSuccess = DateTime.now().millisecond % 10 != 0;
+      // Improved success rate for testing (80% success rate)
+      final randomSuccess = DateTime.now().millisecond % 10 < 8;
+      
+      print('Payment status check result: ${randomSuccess ? 'SUCCESS' : 'FAILED'}');
       
       if (randomSuccess) {
         // Update transaction status in Firestore
@@ -243,6 +255,7 @@ class MobileMoneyService {
             });
           }
           await batch.commit();
+          print('Transaction status updated to completed in Firestore');
         }
         
         return TransactionStatus.completed;
@@ -262,11 +275,13 @@ class MobileMoneyService {
             });
           }
           await batch.commit();
+          print('Transaction status updated to failed in Firestore');
         }
         
         return TransactionStatus.failed;
       }
     } catch (e) {
+      print('Error checking mobile money status: $e');
       return TransactionStatus.failed;
     }
   }

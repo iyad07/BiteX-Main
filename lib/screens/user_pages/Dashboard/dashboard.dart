@@ -160,6 +160,23 @@ class RestaurantDashboardState extends State<RestaurantDashboard> {
             ),
             GestureDetector(
               onTap: () {
+                Navigator.pushNamed(context, '/restaurant_map');
+              },
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                margin: const EdgeInsets.only(right: 16),
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.orange,
+                ),
+                child: const Icon(
+                  Icons.map_outlined,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            GestureDetector(
+              onTap: () {
                 Navigator.pushNamed(context, '/my_cart');
               },
               child: Stack(

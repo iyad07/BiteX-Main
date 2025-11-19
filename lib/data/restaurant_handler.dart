@@ -6,6 +6,7 @@ import 'package:bikex/models/restaurant.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 class RestaurantHandler extends ChangeNotifier {
@@ -32,7 +33,7 @@ class RestaurantHandler extends ChangeNotifier {
   }
   
   void _initializeSampleData() {
-    // Add sample restaurants and foods
+    // Add sample restaurants and foods with location data
     final restaurant1 = Restaurant(
       id: '1',
       restaurantName: 'Waakye Supreme',
@@ -41,6 +42,10 @@ class RestaurantHandler extends ChangeNotifier {
       deliveryTime: "30 mins",
       isFreeDelivery: true,
       restaurantCategories: "Fast Food",
+      latitude: 5.6037,  // Accra, Ghana coordinates
+      longitude: -0.1870,
+      address: "123 Oxford Street, Osu, Accra",
+      phoneNumber: "+233 24 123 4567",
     );
     
     final restaurant2 = Restaurant(
@@ -51,6 +56,24 @@ class RestaurantHandler extends ChangeNotifier {
       deliveryTime: "45 mins",
       isFreeDelivery: false,
       restaurantCategories: "Pizza",
+      latitude: 5.6108,  // East Legon, Accra coordinates
+      longitude: -0.1673,
+      address: "456 Liberation Road, East Legon, Accra",
+      phoneNumber: "+233 30 987 6543",
+    );
+    
+    final restaurant3 = Restaurant(
+      id: '3',
+      restaurantName: 'Burger Junction',
+      restaurantImage: "https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=500",
+      rating: 4,
+      deliveryTime: "25 mins",
+      isFreeDelivery: true,
+      restaurantCategories: "Burgers",
+      latitude: 5.5502,  // Tema coordinates
+      longitude: -0.0074,
+      address: "789 Community 1, Tema",
+      phoneNumber: "+233 26 555 7890",
     );
     
     // Add sample foods to restaurants
@@ -96,7 +119,28 @@ class RestaurantHandler extends ChangeNotifier {
       preparationTime: 25,
     ));
     
-    _restaurants = [restaurant1, restaurant2];
+    // Add foods to restaurant3
+    restaurant3.addFood(Food(
+      id: 'f5',
+      foodTitle: "Classic Burger",
+      foodImage: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500",
+      price: 85,
+      restaurant: restaurant3,
+      description: "Juicy beef patty with lettuce, tomato, and cheese",
+      preparationTime: 15,
+    ));
+    
+    restaurant3.addFood(Food(
+      id: 'f6',
+      foodTitle: "Chicken Burger",
+      foodImage: "https://images.unsplash.com/photo-1606755962773-d324e2d53352?w=500",
+      price: 90,
+      restaurant: restaurant3,
+      description: "Grilled chicken breast with avocado and mayo",
+      preparationTime: 18,
+    ));
+    
+    _restaurants = [restaurant1, restaurant2, restaurant3];
   }
   // Cart Management
   List<CartItem> cartItems = [];
@@ -317,5 +361,71 @@ class RestaurantHandler extends ChangeNotifier {
     } catch (e) {
       return null;
     }
+  }
+  
+  // Location-based methods for map integration
+  
+  // Get restaurants sorted by distance from user location
+  List<Restaurant> getRestaurantsByDistance(LatLng userLocation) {
+    final restaurantsWithDistance = _restaurants
+        .where((restaurant) => restaurant.hasLocation)
+        .map((restaurant) => {
+              'restaurant': restaurant,
+              'distance': restaurant.distanceFrom(userLocation) ?? double.infinity,
+            })
+        .toList();
+    
+    restaurantsWithDistance.sort((a, b) => 
+        (a['distance'] as double).compareTo(b['distance'] as double));
+    
+    return restaurantsWithDistance
+        .map((item) => item['restaurant'] as Restaurant)
+        .toList();
+  }
+  
+  // Get restaurants within a specific radius (in kilometers)
+  List<Restaurant> getRestaurantsWithinRadius(LatLng userLocation, double radiusKm) {
+    return _restaurants
+        .where((restaurant) => 
+            restaurant.hasLocation && 
+            (restaurant.distanceFrom(userLocation) ?? double.infinity) <= radiusKm)
+        .toList();
+  }
+  
+  // Get all restaurants with valid locations for map display
+  List<Restaurant> getRestaurantsWithLocation() {
+    return _restaurants.where((restaurant) => restaurant.hasLocation).toList();
+  }
+  
+  // Get map markers for all restaurants
+  Set<Marker> getRestaurantMarkers({Function(Restaurant)? onMarkerTap}) {
+    return _restaurants
+        .where((restaurant) => restaurant.hasLocation)
+        .map((restaurant) => Marker(
+              markerId: MarkerId('restaurant_${restaurant.id}'),
+              position: restaurant.location!,
+              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+              infoWindow: InfoWindow(
+                title: restaurant.restaurantName,
+                snippet: '${restaurant.rating}⭐ • ${restaurant.deliveryTime}',
+              ),
+              onTap: onMarkerTap != null ? () => onMarkerTap(restaurant) : null,
+            ))
+        .toSet();
+  }
+  
+  // Calculate estimated delivery time based on distance
+  String getEstimatedDeliveryTime(Restaurant restaurant, LatLng userLocation) {
+    if (!restaurant.hasLocation) return restaurant.deliveryTime;
+    
+    final distance = restaurant.distanceFrom(userLocation);
+    if (distance == null) return restaurant.deliveryTime;
+    
+    // Estimate: 2 minutes per km + preparation time
+    final travelTime = (distance * 2).round();
+    final preparationTime = int.tryParse(restaurant.deliveryTime.replaceAll(RegExp(r'[^0-9]'), '')) ?? 30;
+    final totalTime = travelTime + preparationTime;
+    
+    return '$totalTime mins';
   }
 }

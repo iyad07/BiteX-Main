@@ -168,6 +168,40 @@ class _RestaurantPageState extends State<RestaurantPage> {
               ),
               const SizedBox(height: 16),
 
+              // Track Order Button (Demo)
+              if (widget.restaurant!.hasLocation)
+                Container(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      // Demo order tracking with sample data
+                      Navigator.pushNamed(
+                        context,
+                        '/order_tracking',
+                        arguments: {
+                          'restaurant': widget.restaurant!,
+                          'orderItems': widget.restaurant!.foodList.take(2).toList(),
+                          'orderNumber': '#BX${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
+                          'customerLocation': null, // Will use current location
+                        },
+                      );
+                    },
+                    icon: const Icon(Icons.location_on, color: Colors.white),
+                    label: const Text(
+                      'Track Sample Order',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 16),
+
               // Food Categories
               Row(
                 children: [
